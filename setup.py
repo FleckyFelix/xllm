@@ -42,6 +42,13 @@ def get_device_type():
         except ImportError:
             return "cuda"
 
+    
+    try:
+        import torch_musa
+        return "musa"
+    except ImportError:
+        pass
+
     try:
         import torch_mlu
         if torch.mlu.is_available():
@@ -152,6 +159,14 @@ def get_ixformer_root_path():
         import ixformer
         import os
         return os.path.dirname(os.path.abspath(ixformer.__file__))
+    except ImportError:
+        return None
+    
+def get_torch_musa_root_path():
+    try:
+        import torch_musa
+        import os
+        return os.path.dirname(os.path.abspath(torch_musa.__file__))
     except ImportError:
         return None
 
@@ -274,6 +289,12 @@ def set_ilu_envs():
     os.environ["PYTORCH_INSTALL_PATH"] = get_torch_root_path()
     os.environ["IXFORMER_INSTALL_PATH"] = get_ixformer_root_path()
         
+def set_musa_envs():
+    os.environ["PYTHON_INCLUDE_PATH"] = get_python_include_path()
+    os.environ["PYTHON_LIB_PATH"] =  get_torch_musa_root_path()
+    os.environ["LIBTORCH_ROOT"] = get_torch_musa_root_path()
+    os.environ["PYTORCH_INSTALL_PATH"] = get_torch_musa_root_path()
+
 class CMakeExtension(Extension):
     def __init__(self, name: str, path: str, sourcedir: str = "") -> None:
         super().__init__(name, sources=[])
@@ -284,7 +305,7 @@ class CMakeExtension(Extension):
 class ExtBuild(build_ext):
     user_options = build_ext.user_options + [
         ("base-dir=", None, "base directory of xLLM project"),
-        ("device=", None, "target device type (a3 or a2 or mlu or cuda)"),
+        ("device=", None, "target device type (a3 or a2 or mlu or cuda or musa)"),
         ("arch=", None, "target arch type (x86 or arm)"),
         ("install-xllm-kernels=", None, "install xllm_kernels RPM package (true/false)"),
         ("generate-so=", None, "generate so or binary"),
@@ -384,8 +405,13 @@ class ExtBuild(build_ext):
         elif self.device == "ilu":
             cmake_args += ["-DUSE_ILU=ON"]
             set_ilu_envs()
+        elif self.device == "musa":
+            cmake_args += ["-DUSE_MUSA=ON"]
+            set_musa_envs()
+            BUILD_TEST_FILE = False
+            BUILD_EXPORT = False
         else:
-            raise ValueError("Please set --device to a2 or a3 or mlu or cuda or ilu.")
+            raise ValueError("Please set --device to a2 or a3 or mlu or cuda or ilu or musa.")
 
         product = "xllm"
         if self.generate_so:
@@ -519,7 +545,7 @@ class ExtBuildSingleTest(ExtBuild):
 
 class BuildDistWheel(bdist_wheel):
     user_options = bdist_wheel.user_options + [
-        ("device=", None, "target device type (a3 or a2 or mlu or cuda)"),
+        ("device=", None, "target device type (a3 or a2 or mlu or cuda or musa)"),
         ("arch=", None, "target arch type (x86 or arm)"),
     ]
 

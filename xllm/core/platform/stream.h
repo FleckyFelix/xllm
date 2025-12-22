@@ -33,6 +33,8 @@ limitations under the License.
 #include <torch_mlu/csrc/framework/core/MLUStream.h>
 #elif defined(USE_CUDA) || defined(USE_ILU)
 #include <c10/cuda/CUDAStream.h>
+#elif defined(USE_MUSA)
+#include <c10/musa/MUSAGuard.h>
 #endif
 
 namespace xllm {
@@ -71,6 +73,8 @@ class Stream {
   torch_mlu::MLUStream stream_;
 #elif defined(USE_CUDA) || defined(USE_ILU)
   c10::cuda::CUDAStream stream_;
+#elif defined(USE_MUSA)
+  c10::musa::MUSAStream stream_;
 #endif
   const int32_t timeout_;
 };

@@ -210,7 +210,8 @@ void BatchInputBuilder::process_sequences_multithreaded() {
     state_.kv_cache_tokens_nums.insert(state_.kv_cache_tokens_nums.end(),
                                        state.kv_cache_tokens_nums.begin(),
                                        state.kv_cache_tokens_nums.end());
-#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU)
+#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU) || \
+    defined(USE_MUSA)
     int32_t seq_len_offset = state_.seq_lens.back();
     // skip the first element which is 0
     for (size_t i = 1; i < state.seq_lens.size(); ++i) {
@@ -296,7 +297,8 @@ void BatchInputBuilder::process_single_sequence(
 #if defined(USE_NPU)
   state.seq_lens.push_back(seq_len + offset);
   state.q_seq_lens.push_back(q_seq_len);
-#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU)
+#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU) || \
+    defined(USE_MUSA)
   state.seq_lens.push_back(state.seq_lens.back() + seq_len + offset);
   state.q_seq_lens.push_back(state.q_seq_lens.back() + q_seq_len);
 #endif
@@ -512,7 +514,8 @@ void BatchInputBuilder::padding_decode_batch_size(
 #if defined(USE_NPU)
         state_.seq_lens.push_back(num_decoding_tokens);
         state_.q_seq_lens.push_back(num_decoding_tokens);
-#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU)
+#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU) || \
+    defined(USE_MUSA)
         state_.seq_lens.push_back(state_.seq_lens.back() + num_decoding_tokens);
         state_.q_seq_lens.push_back(state_.q_seq_lens.back() +
                                     num_decoding_tokens);

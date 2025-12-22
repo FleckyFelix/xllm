@@ -1,3 +1,10 @@
+# if(USE_CUDA)
+#   set(CMAKE_CXX_COMPILER "/usr/local/musa-4.3.2/bin/mcc")
+  # add_compile_options("-fplugin=/data/gh/git/musamapping/build/libMusaMapping.so")
+# endif()
+# set(CMAKE_CXX_COMPILER "/usr/local/musa-4.3.2/bin/mcc")
+
+
 include(cc_binary)
 include(cc_shared_library)
 
@@ -91,6 +98,10 @@ if(USE_MSPTI)
   list(APPEND COMMON_LIBS mspti)
 endif()
 target_link_libraries(xllm PUBLIC ${COMMON_LIBS})
+if (USE_MUSA)
+  set(CMAKE_CXX_COMPILER ${CMAKE_MUSA_COMPILER})
+  target_link_libraries(xllm PUBLIC atomic musa_python torch_cpu c10)
+endif()
 
 # install xllm
 install(TARGETS xllm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -159,8 +159,13 @@ torch::Tensor compute_rotary_embedding(int64_t dim,
                                        double rope_theta,
                                        const torch::TensorOptions& options,
                                        bool use_cat) {
+#if defined(USE_MUSA)
+  auto options_new =
+      torch::device(options.device()).dtype(at::ScalarType::Float);
+#else
   auto options_new =
       torch::device(options.device()).dtype(at::ScalarType::Double);
+#endif
   auto inv_freq =
       1.0 / torch::pow(rope_theta, torch::arange(0, dim, 2, options_new) / dim)
                 .to(at::ScalarType::Float);

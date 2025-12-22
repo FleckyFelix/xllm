@@ -1,14 +1,16 @@
+message(STATUS "USE_CUDA:${USE_CUDA}")
 cmake_minimum_required(VERSION 3.26)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
+message(STATUS "USE_NPU:${USE_NPU}")
 option(USE_NPU "Enable NPU support" OFF)
 option(USE_MLU "Enable MLU support" OFF)
 option(USE_ILU "Enable ILU support" OFF)
 option(USE_CUDA "Enable CUDA support" OFF)
+option(USE_MUSA "Enable MUSA support" OFF)
 add_compile_definitions(YLT_ENABLE_IBV)
 add_definitions(-DYLT_ENABLE_IBV)
 set(YLT_ENABLE_IBV ON)
-
+message(STATUS "USE_CUDA:${USE_CUDA}")
 if(DEVICE_ARCH STREQUAL "ARM")
     set(CMAKE_SYSTEM_PROCESSOR aarch64)
     set(RUST_TARGET aarch64-unknown-linux-gnu)
@@ -71,6 +73,7 @@ if(USE_NPU)
     )
     if(NOT XLLM_OPS_RESULT EQUAL 0)
       message(FATAL_ERROR "Failed to precompile xllm ops, error code: ${XLLM_OPS_RESULT}")
+      # message(STATUS "Failed to precompile xllm ops, error code: ${XLLM_OPS_RESULT}")
     endif()
     set(XLLM_OPS_GIT_HEAD_CACHED "${XLLM_OPS_GIT_HEAD}" CACHE INTERNAL "" FORCE)
     message(STATUS "xllm ops precompiled and HEAD cache updated")
@@ -105,6 +108,15 @@ option(USE_MANYLINUX "Build for manylinux" OFF)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
+
+# if(USE_NPU OR USE_CUDA)
+#   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+#   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+#   # add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+# elseif(USE_MLU)
+#   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
+#   add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
+# endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
@@ -228,9 +240,15 @@ endif()
 set(CPPREST_EXCLUDE_WEBSOCKETS ON CACHE BOOL "Exclude websockets functionality." FORCE)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-truncation")
 
+list(APPEND CMAKE_MODULE_PATH "/data/gh/git/xllm/cmake")
 if(USE_CUDA)
   project("xllm" LANGUAGES C CXX CUDA)
   find_package(CUDAToolkit REQUIRED)
+elseif(USE_MUSA)
+  project("xllm" LANGUAGES C CXX MUSA)
+  add_definitions(
+        -Wno-c++11-narrowing
+      )
 else()
   project("xllm" LANGUAGES C CXX)
 endif()
@@ -287,7 +305,7 @@ endif()
 # before including libtorch, as doing so afterwards may lead to
 # unexpected linker errors.
 if (DEFINED ENV{LIBTORCH_ROOT})
-  find_package(Torch REQUIRED HINTS "$ENV{LIBTORCH_ROOT}")
+  # find_package(Torch REQUIRED HINTS "$ENV{LIBTORCH_ROOT}") # dont use torch/include, add vcpkg/include
   message(STATUS "Using libtorch at $ENV{LIBTORCH_ROOT}")
 else()
   include(FetchContent)
@@ -309,7 +327,7 @@ else()
   )
   FetchContent_MakeAvailable(libtorch)
   
-  find_package(Torch REQUIRED PATHS ${LIBTORCH_SOURCE_DIR} NO_DEFAULT_PATH)
+  find_package(Torch REQUIRED PATHS ${LIBTORCH_SOURCE_DIR} NO_DEFAULT_PATH) #don't use torch/include, add vcpkg/include
   message(STATUS "Downloading and using libtorch 2.1.0 for CPU at ${LIBTORCH_SOURCE_DIR}")
 endif()
 
@@ -410,6 +428,53 @@ if(USE_CUDA)
   )
 endif()
 
+if(USE_MUSA)
+  add_definitions(-DUSE_MUSA)
+  add_compile_definitions(TORCH_CUDA=1)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+  include_directories(
+      # /usr/local/lib/python3.10/dist-packages/tvm_ffi/include/
+      /usr/local/musa/include
+      /data/gh/git/flashinfer_musa/3rdparty/mutlass/include
+      /usr/local/lib/python3.10/dist-packages/torch_musa/share/generated_cuda_compatible/include
+      /usr/local/lib/python3.10/dist-packages/torch_musa/share/generated_cuda_compatible/include/torch/csrc/api/include
+      /usr/local/lib/python3.10/dist-packages/torch_musa/share/generated_cuda_compatible/include/torch/csrc/musa
+      # /usr/local/lib/python3.10/dist-packages/torch_musa_compiled/include
+      /usr/local/lib/python3.10/dist-packages/torch_musa_compiled/share/torch_musa_codegen
+      /usr/local/lib/python3.10/dist-packages/torch_musa_compiled/share/generated_cuda_compatible/include
+      # /usr/include/python3.10 #set by PYTHON_INCLUDE_PATH
+      /usr/local/lib/python3.10/dist-packages
+      /data/gh/git/xllm/build/cmake.linux-x86_64-cpython-310/vcpkg_installed/x64-linux/include
+      $ENV{PYTHON_INCLUDE_PATH}
+      # $ENV{PYTORCH_INSTALL_PATH}/include
+      # $ENV{PYTORCH_INSTALL_PATH}/include/torch/csrc/api/include
+  )
+
+  link_directories(
+    $ENV{PYTHON_LIB_PATH}
+    $ENV{PYTORCH_INSTALL_PATH}/lib
+    /usr/local/lib/python3.10/dist-packages/torch_compiled/lib
+    # $ENV{CUDA_TOOLKIT_ROOT_DIR}/lib64
+    /usr/local/musa/lib
+    # /usr/local/lib/python3.10/dist-packages/tvm_ffi/lib
+    #lmusa_python
+    /usr/local/lib/python3.10/dist-packages/torch_musa/lib/
+    #mkl
+    /opt/intel/oneapi/mkl/lib/intel64
+  )
+
+  set(MUSA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -O3)
+  # find_package(NCCL REQUIRED)
+
+  # find cudnn
+  # execute_process(COMMAND python -c "import nvidia.cudnn; print(nvidia.cudnn.__file__)" OUTPUT_VARIABLE CUDNN_PYTHON_PATH)
+  # get_filename_component(CUDNN_ROOT_DIR "${CUDNN_PYTHON_PATH}" DIRECTORY)
+  # link_directories(
+  #     ${CUDNN_ROOT_DIR}/lib64
+  #     ${CUDNN_ROOT_DIR}/lib
+  # )
+endif()
+
 if(USE_ILU)
   add_definitions(-DUSE_ILU)
   set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -483,6 +548,10 @@ include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/third_party/Mooncake/moon
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/third_party/sentencepiece)
 # Also add other commonly used third_party directories as system headers
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/third_party/minja)
+if(USE_MUSA)
+  set(CMAKE_MUSA_FLAGS_DEBUG "-g -std=gnu++20 -fPIC -mtgpu --offload-arch=mp_31")
+  set(CMAKE_MUSA_FLAGS_RELEASE "-O2 -DNDEBUG -std=gnu++20 -fPIC -mtgpu --offload-arch=mp_31")
+endif()
 
 # add subdirectories
 add_subdirectory(xllm)
