@@ -201,7 +201,7 @@ void BatchInputBuilder::process_sequences_multithreaded() {
                                         state.unique_token_lens_vec.end());
     state_.max_seq_len = std::max(state_.max_seq_len, state.max_seq_len);
     state_.q_max_seq_len = std::max(state_.q_max_seq_len, state.q_max_seq_len);
-#if defined(USE_NPU)
+#if defined(USE_NPU) || defined(USE_MUSA)
     state_.seq_lens.insert(
         state_.seq_lens.end(), state.seq_lens.begin(), state.seq_lens.end());
     state_.q_seq_lens.insert(state_.q_seq_lens.end(),
@@ -294,11 +294,10 @@ void BatchInputBuilder::process_single_sequence(
   state.max_seq_len = std::max(state.max_seq_len, seq_len + offset);
   state.q_max_seq_len = std::max(state.q_max_seq_len, q_seq_len);
   state.kv_cache_tokens_nums.emplace_back(n_kv_cache_tokens);
-#if defined(USE_NPU)
+#if defined(USE_NPU) || defined(USE_MUSA)
   state.seq_lens.push_back(seq_len + offset);
   state.q_seq_lens.push_back(q_seq_len);
-#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU) || \
-    defined(USE_MUSA)
+#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU)
   state.seq_lens.push_back(state.seq_lens.back() + seq_len + offset);
   state.q_seq_lens.push_back(state.q_seq_lens.back() + q_seq_len);
 #endif

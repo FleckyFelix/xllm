@@ -161,7 +161,7 @@ def get_ixformer_root_path():
         return os.path.dirname(os.path.abspath(ixformer.__file__))
     except ImportError:
         return None
-    
+
 def get_torch_musa_root_path():
     try:
         import torch_musa
@@ -274,6 +274,14 @@ def set_mlu_envs():
     os.environ["LIBTORCH_ROOT"] = get_torch_root_path()
     os.environ["PYTORCH_INSTALL_PATH"] = get_torch_root_path()
     os.environ["PYTORCH_MLU_INSTALL_PATH"] = get_torch_mlu_root_path()
+
+def set_musa_envs():
+    os.environ["PYTHON_INCLUDE_PATH"] = get_python_include_path()
+    os.environ["PYTHON_LIB_PATH"] =  get_torch_root_path()
+    os.environ["LIBTORCH_ROOT"] = get_torch_root_path()
+    os.environ["PYTORCH_INSTALL_PATH"] = get_torch_root_path()
+    os.environ["PYTORCH_MUSA_INSTALL_PATH"] = get_torch_musa_root_path()
+    os.environ["MUSA_TOOLKIT_ROOT_DIR"] = "/usr/local/musa"
     
 def set_cuda_envs():
     os.environ["PYTHON_INCLUDE_PATH"] = get_python_include_path()
@@ -289,12 +297,6 @@ def set_ilu_envs():
     os.environ["PYTORCH_INSTALL_PATH"] = get_torch_root_path()
     os.environ["IXFORMER_INSTALL_PATH"] = get_ixformer_root_path()
         
-def set_musa_envs():
-    os.environ["PYTHON_INCLUDE_PATH"] = get_python_include_path()
-    os.environ["PYTHON_LIB_PATH"] =  get_torch_musa_root_path()
-    os.environ["LIBTORCH_ROOT"] = get_torch_musa_root_path()
-    os.environ["PYTORCH_INSTALL_PATH"] = get_torch_musa_root_path()
-
 class CMakeExtension(Extension):
     def __init__(self, name: str, path: str, sourcedir: str = "") -> None:
         super().__init__(name, sources=[])
@@ -409,7 +411,7 @@ class ExtBuild(build_ext):
             cmake_args += ["-DUSE_MUSA=ON"]
             set_musa_envs()
             BUILD_TEST_FILE = False
-            BUILD_EXPORT = False
+            # BUILD_EXPORT = False
         else:
             raise ValueError("Please set --device to a2 or a3 or mlu or cuda or ilu or musa.")
 
@@ -419,7 +421,6 @@ class ExtBuild(build_ext):
             cmake_args += ["-DGENERATE_SO=ON"]
         else:
             cmake_args += ["-DGENERATE_SO=OFF"]
-
         # Adding CMake arguments set as environment variable
         # (needed e.g. to build for ARM OSx on conda-forge)
         if "CMAKE_ARGS" in os.environ:
@@ -791,9 +792,9 @@ def parse_arguments():
     parser.add_argument(
         '--device',
         type=str.lower,
-        choices=['auto', 'a2', 'a3', 'mlu', 'cuda', 'ilu'],
+        choices=['auto', 'a2', 'a3', 'mlu', 'musa', 'cuda', 'ilu'],
         default='auto',
-        help='Device type: a2, a3, mlu, ilu or cuda (case-insensitive)'
+        help='Device type: a2, a3, mlu, musa, ilu or cuda (case-insensitive)'
     )
     
     parser.add_argument(

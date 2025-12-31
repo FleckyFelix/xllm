@@ -158,12 +158,12 @@ torch::Tensor compute_rotary_embedding(int64_t dim,
                                        int64_t seq_len,
                                        double rope_theta,
                                        const torch::TensorOptions& options,
-                                       bool use_cat) {
-#if defined(USE_MUSA)
+                                       bool use_cat,
+                                       bool output_interleave) {
   auto options_new =
+#if defined(USE_MUSA)
       torch::device(options.device()).dtype(at::ScalarType::Float);
 #else
-  auto options_new =
       torch::device(options.device()).dtype(at::ScalarType::Double);
 #endif
   auto inv_freq =
@@ -173,11 +173,18 @@ torch::Tensor compute_rotary_embedding(int64_t dim,
 
   auto freqs = torch::ger(seq_idx, inv_freq).to(torch::kFloat32);
   torch::Tensor emb;
-  if (use_cat) {
-    emb = torch::cat({freqs, freqs}, -1);
+  if (!output_interleave) {
+    if (use_cat) {
+      // 0, 1, ..., dim-1, 0, 1, ... dim-1
+      emb = torch::cat({freqs, freqs}, -1);
+    } else {
+      // 0, 0, 1, 1, ..., dim-1, dim-1
+      emb = torch::stack({freqs, freqs}, -1);
+      emb = emb.reshape({seq_len, dim});
+    }
   } else {
-    emb = torch::stack({freqs, freqs}, -1);
-    emb = emb.reshape({seq_len, dim});
+    // 0, 1, 2, ..., dim-1
+    emb = freqs;
   }
   auto rope_cos = torch::cos(emb);
   auto rope_sin = torch::sin(emb);
@@ -194,6 +201,11 @@ torch::Tensor compute_rotary_embedding(int64_t dim,
     }
   }
   std::vector<torch::Tensor> cos_sin{rope_cos, rope_sin};
+  if (output_interleave) {
+    // cos0, sin0, cos1, sin1 ... cos(dim-1), sin(dim-1)
+    return torch::stack(cos_sin, -1).reshape({seq_len, -1});
+  }
+  // cos0, ... cos(dim-1), sin0, ... sin(dim-1)
   return torch::cat(cos_sin, -1);
 }
 
@@ -316,7 +328,17 @@ torch::Tensor get_concat_rotary_embedding(int64_t dim,
                                           int64_t seq_len,
                                           double rope_theta,
                                           const torch::TensorOptions& options) {
-  return compute_rotary_embedding(dim, seq_len, rope_theta, options, true);
+  return compute_rotary_embedding(
+      dim, seq_len, rope_theta, options, true, false);
+}
+
+torch::Tensor get_interleave_rotary_embedding(
+    int64_t dim,
+    int64_t seq_len,
+    double rope_theta,
+    const torch::TensorOptions& options) {
+  return compute_rotary_embedding(
+      dim, seq_len, rope_theta, options, false, true);
 }
 
 torch::Tensor get_chatglm_rotary_embedding(
@@ -324,7 +346,8 @@ torch::Tensor get_chatglm_rotary_embedding(
     int64_t seq_len,
     double rope_theta,
     const torch::TensorOptions& options) {
-  return compute_rotary_embedding(dim, seq_len, rope_theta, options, false);
+  return compute_rotary_embedding(
+      dim, seq_len, rope_theta, options, false, false);
 }
 
 torch::Tensor get_deepseek_rotary_embedding(

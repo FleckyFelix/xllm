@@ -15,6 +15,8 @@ limitations under the License.
 
 #pragma once
 
+#include <cstdint>
+
 #if defined(USE_NPU)
 #include "acl/acl.h"
 #elif defined(USE_MLU)

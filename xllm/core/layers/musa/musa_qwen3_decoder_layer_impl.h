@@ -13,43 +13,42 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#pragma once
+#ifndef CORE_LAYERS_MUSA_MUSA_QWEN3_DECODER_LAYER_IMPL_H_
+#define CORE_LAYERS_MUSA_MUSA_QWEN3_DECODER_LAYER_IMPL_H_
 
 #include <torch/torch.h>
 
-#include <tuple>
-
 #include "framework/kv_cache/kv_cache.h"
 #include "framework/model/model_input_params.h"
+#include "framework/model_context.h"
+#include "framework/state_dict/state_dict.h"
+#include "framework/state_dict/utils.h"
 #include "layers/common/attention_metadata.h"
+#include "musa_layer_base.h"
 
 namespace xllm {
 namespace layer {
-class AttentionImpl : public torch::nn::Module {
+class MUSAQwen3DecoderImpl : public torch::nn::Module {
  public:
-  AttentionImpl() = default;
+  explicit MUSAQwen3DecoderImpl(const ModelContext& context);
 
-  AttentionImpl(int num_heads,
-                int head_size,
-                float scale,
-                int num_kv_heads,
-                int sliding_window);
+  ~MUSAQwen3DecoderImpl() {};
 
-  std::tuple<torch::Tensor, std::optional<torch::Tensor>> forward(
-      const AttentionMetadata& attn_metadata,
-      torch::Tensor& query,
-      torch::Tensor& key,
-      torch::Tensor& value,
-      KVCache& kv_cache);
+  void load_state_dict(const StateDict& state_dict);
+
+  torch::Tensor forward(torch::Tensor& x,
+                        std::optional<torch::Tensor>& residual,
+                        torch::Tensor& positions,
+                        const AttentionMetadata& attn_metadata,
+                        KVCache& kv_cache,
+                        const ModelInputParams& input_params);
 
  private:
-  int num_heads_;
-  int head_size_;
-  float scale_;
-  int num_kv_heads_;
-  int sliding_window_;
+  std::vector<std::shared_ptr<MUSALayerBaseImpl>> layers_;
+  // ParallelArgs parallel_args_;
 };
-TORCH_MODULE(Attention);
 
 }  // namespace layer
 }  // namespace xllm
+
+#endif

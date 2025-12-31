@@ -15,6 +15,12 @@ limitations under the License.
 
 #pragma once
 
+#include <algorithm>
+#include <cstdint>
+#include <functional>
+#include <iterator>
+#include <vector>
+
 #include "core/layers/qwen3_decoder_layer.h"
 #include "llm_model_base.h"
 
@@ -34,6 +40,9 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
           model_args.max_position_embeddings(),
           model_args.rope_theta(),
           options);
+#if defined(USE_MUSA)
+      cos_sin = cos_sin.musa();
+#endif
     }
 
     layers_.reserve(model_args.n_layers());
@@ -87,10 +96,8 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
                                 torch::Tensor positions,
                                 std::vector<KVCache>& kv_caches,
                                 const ModelInputParams& input_params) {
-    bool use_deepstack = input_params.deep_stacks.size() > 0;
     ModelInputParams& input_params_new =
         const_cast<ModelInputParams&>(input_params);
-    std::vector<torch::Tensor> deep_stacks;
 
     if (tokens.numel() == 0) {
       tokens = torch::tensor({1}).to(torch::kInt32).to(tokens.device());
@@ -103,9 +110,31 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
     } else {
       h = embed_tokens_(tokens);
     }
+
+    bool use_deepstack = input_params.deep_stacks.size() > 0;
+    std::vector<torch::Tensor> deep_stacks;
     if (use_deepstack) {
       deep_stacks = input_params.deep_stacks;  // [num_deepstack, hidden_size]
     }
+
+#if defined(USE_MUSA)
+    layer::update_dummy_run_input(dp_rank_, positions, input_params_new);
+    torch::Tensor& new_cache_slots = input_params_new.new_cache_slots;
+    // musa cache slots should be (block_id, id_in_block)
+    // todo: add this as an optional change to build input_params phase?
+    new_cache_slots = torch::stack(
+        {new_cache_slots.floor_divide(64), new_cache_slots.remainder(64)}, -1);
+
+    layer::AttentionMetadata attn_metadata =
+        layer::AttentionMetadata::build(input_params_new.q_seq_lens_vec,
+                                        input_params_new.kv_seq_lens_vec,
+                                        q_heads,
+                                        kv_heads,
+                                        q_head_dim,
+                                        new_cache_slots,
+                                        64);
+    attn_metadata.mrope_cos = cos_sin_;
+#else
 
     auto& dp_token_nums = input_params_new.dp_global_token_nums;
     std::replace(dp_token_nums.begin(), dp_token_nums.end(), 0, 1);
@@ -116,6 +145,7 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
       std::tie(attn_metadata.mrope_cos, attn_metadata.mrope_sin) =
           apply_mrope(positions);
     }
+#endif
 
     std::optional<torch::Tensor> residual;
     for (size_t i = 0; i < layers_.size(); i++) {
@@ -135,6 +165,7 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
         }
       }
     }
+
     return std::get<0>(norm_(h, residual));
   }
 };

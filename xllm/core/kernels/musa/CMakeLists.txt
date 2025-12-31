@@ -19,5 +19,6 @@ cc_library(
     ${MUSA_SOURCE_FILES}
   DEPS
     torch
-    :util
+    util
+    MTTOplib
 )

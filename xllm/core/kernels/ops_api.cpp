@@ -356,6 +356,22 @@ void fused_layernorm(FusedLayerNormParams& params) {
                        params.store_output_before_norm,
                        params.store_output_after_norm,
                        params.dynamic_quant);
+#elif defined(USE_MUSA)
+  musa::fused_layernorm(params.input,
+                        params.output,
+                        params.residual,
+                        params.weight,
+                        params.beta,
+                        params.bias,
+                        params.quant_scale,
+                        params.residual_out,
+                        params.smooth_quant_scale,
+                        params.normed_out,
+                        params.mode,
+                        params.eps,
+                        params.store_output_before_norm,
+                        params.store_output_after_norm,
+                        params.dynamic_quant);
 #elif defined(USE_NPU)
   if (params.residual.has_value()) {
     std::tie(params.output, std::ignore, params.residual_out) =

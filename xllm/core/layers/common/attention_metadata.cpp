@@ -17,6 +17,10 @@ limitations under the License.
 
 #include "core/common/global_flags.h"
 
+#if defined(USE_MUSA)
+#include "MTTOplib/Attention.h"
+#endif
+
 namespace xllm {
 namespace layer {
 
@@ -68,6 +72,27 @@ AttentionMetadata AttentionMetadata::build(
 
   return attn_metadata;
 }
+
+#if defined(USE_MUSA)
+AttentionMetadata AttentionMetadata::build(
+    std::vector<int32_t> const& q_seq_lens_vec,
+    std::vector<int32_t> const& kv_seq_lens_vec,
+    int32_t q_heads,
+    int32_t kv_heads,
+    int32_t q_head_dim,
+    torch::Tensor const& cache_mapping,
+    int32_t page_tokens) {
+  AttentionMetadata attn_metadata;
+  attn_metadata.amd = xllm_musa::AttnMetaData::build(q_seq_lens_vec,
+                                                     kv_seq_lens_vec,
+                                                     q_heads,
+                                                     kv_heads,
+                                                     q_head_dim,
+                                                     cache_mapping,
+                                                     page_tokens);
+  return attn_metadata;
+}
+#endif
 
 }  // namespace layer
 }  // namespace xllm
