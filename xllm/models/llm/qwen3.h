@@ -15,12 +15,6 @@ limitations under the License.
 
 #pragma once
 
-#include <algorithm>
-#include <cstdint>
-#include <functional>
-#include <iterator>
-#include <vector>
-
 #include "core/layers/qwen3_decoder_layer.h"
 #include "llm_model_base.h"
 
@@ -34,16 +28,22 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
     // register submodules
     auto model_args = context.get_model_args();
     auto options = context.get_tensor_options();
+#if defined(USE_MUSA)
+    cos_sin_ = layer::rotary::get_interleave_rotary_embedding(
+                   128,
+                   model_args.max_position_embeddings(),
+                   model_args.rope_theta(),
+                   options.dtype(torch::kFloat))
+                   .musa();
+#else
     if (!mrope_section_.empty()) {
       cos_sin_ = layer::rotary::get_concat_rotary_embedding(
           128,
           model_args.max_position_embeddings(),
           model_args.rope_theta(),
           options);
-#if defined(USE_MUSA)
-      cos_sin = cos_sin.musa();
-#endif
     }
+#endif
 
     layers_.reserve(model_args.n_layers());
     norm_ = register_module("norm", layer::RMSNorm(context));
@@ -96,8 +96,10 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
                                 torch::Tensor positions,
                                 std::vector<KVCache>& kv_caches,
                                 const ModelInputParams& input_params) {
+    bool use_deepstack = input_params.deep_stacks.size() > 0;
     ModelInputParams& input_params_new =
         const_cast<ModelInputParams&>(input_params);
+    std::vector<torch::Tensor> deep_stacks;
 
     if (tokens.numel() == 0) {
       tokens = torch::tensor({1}).to(torch::kInt32).to(tokens.device());
@@ -110,35 +112,31 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
     } else {
       h = embed_tokens_(tokens);
     }
-
-    bool use_deepstack = input_params.deep_stacks.size() > 0;
-    std::vector<torch::Tensor> deep_stacks;
     if (use_deepstack) {
       deep_stacks = input_params.deep_stacks;  // [num_deepstack, hidden_size]
     }
 
+    auto& dp_token_nums = input_params_new.dp_global_token_nums;
+    std::replace(dp_token_nums.begin(), dp_token_nums.end(), 0, 1);
+    auto attn_metadata = layer::AttentionMetadata::build(input_params_new);
+
 #if defined(USE_MUSA)
-    layer::update_dummy_run_input(dp_rank_, positions, input_params_new);
     torch::Tensor& new_cache_slots = input_params_new.new_cache_slots;
     // musa cache slots should be (block_id, id_in_block)
     // todo: add this as an optional change to build input_params phase?
     new_cache_slots = torch::stack(
         {new_cache_slots.floor_divide(64), new_cache_slots.remainder(64)}, -1);
-
-    layer::AttentionMetadata attn_metadata =
-        layer::AttentionMetadata::build(input_params_new.q_seq_lens_vec,
-                                        input_params_new.kv_seq_lens_vec,
-                                        q_heads,
-                                        kv_heads,
-                                        q_head_dim,
-                                        new_cache_slots,
-                                        64);
+    layer::AttentionMetadata::set_musa_metadata(
+        attn_metadata,
+        input_params_new.q_seq_lens_vec,
+        input_params_new.kv_seq_lens_vec,
+        32 /*q_heads*/,
+        8 /*kv_heads*/,
+        128 /*q_head_dim*/,
+        new_cache_slots,
+        64);
     attn_metadata.mrope_cos = cos_sin_;
 #else
-
-    auto& dp_token_nums = input_params_new.dp_global_token_nums;
-    std::replace(dp_token_nums.begin(), dp_token_nums.end(), 0, 1);
-    auto attn_metadata = layer::AttentionMetadata::build(input_params_new);
     bool only_prefill =
         (attn_metadata.is_prefill || attn_metadata.is_chunked_prefill);
     if (positions.dim() == 2 && only_prefill && !mrope_section_.empty()) {

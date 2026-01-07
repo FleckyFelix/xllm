@@ -74,7 +74,8 @@ AttentionMetadata AttentionMetadata::build(
 }
 
 #if defined(USE_MUSA)
-AttentionMetadata AttentionMetadata::build(
+void AttentionMetadata::set_musa_metadata(
+    AttentionMetadata& attn_metadata,
     std::vector<int32_t> const& q_seq_lens_vec,
     std::vector<int32_t> const& kv_seq_lens_vec,
     int32_t q_heads,
@@ -82,7 +83,6 @@ AttentionMetadata AttentionMetadata::build(
     int32_t q_head_dim,
     torch::Tensor const& cache_mapping,
     int32_t page_tokens) {
-  AttentionMetadata attn_metadata;
   attn_metadata.amd = xllm_musa::AttnMetaData::build(q_seq_lens_vec,
                                                      kv_seq_lens_vec,
                                                      q_heads,
@@ -90,7 +90,6 @@ AttentionMetadata AttentionMetadata::build(
                                                      q_head_dim,
                                                      cache_mapping,
                                                      page_tokens);
-  return attn_metadata;
 }
 #endif
 

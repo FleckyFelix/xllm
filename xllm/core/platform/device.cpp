@@ -225,6 +225,8 @@ std::unique_ptr<Stream> Device::current_stream() const {
   auto current_s = torch_mlu::getCurrentMLUStream(index());
 #elif defined(USE_CUDA) || defined(USE_ILU)
   auto current_s = c10::cuda::getCurrentCUDAStream(index());
+#elif defined(USE_MUSA)
+  auto current_s = c10::musa::getCurrentMUSAStream(index());
 #endif
   return std::make_unique<Stream>(current_s);
 }

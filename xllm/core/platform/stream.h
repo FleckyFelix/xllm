@@ -55,6 +55,8 @@ class Stream {
   Stream(torch_mlu::MLUStream stream, const int32_t timeout = -1);
 #elif defined(USE_CUDA) || defined(USE_ILU)
   Stream(c10::cuda::CUDAStream stream, const int32_t timeout = -1);
+#elif defined(USE_MUSA)
+  Stream(c10::musa::MUSAStream stream, const int32_t timeout = -1);
 #endif
 
   int synchronize() const;

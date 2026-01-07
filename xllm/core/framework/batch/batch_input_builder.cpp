@@ -210,8 +210,7 @@ void BatchInputBuilder::process_sequences_multithreaded() {
     state_.kv_cache_tokens_nums.insert(state_.kv_cache_tokens_nums.end(),
                                        state.kv_cache_tokens_nums.begin(),
                                        state.kv_cache_tokens_nums.end());
-#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU) || \
-    defined(USE_MUSA)
+#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU)
     int32_t seq_len_offset = state_.seq_lens.back();
     // skip the first element which is 0
     for (size_t i = 1; i < state.seq_lens.size(); ++i) {
@@ -510,11 +509,10 @@ void BatchInputBuilder::padding_decode_batch_size(
           }
           state_.new_token_slot_ids.emplace_back(0);
         }
-#if defined(USE_NPU)
+#if defined(USE_NPU) || defined(USE_MUSA)
         state_.seq_lens.push_back(num_decoding_tokens);
         state_.q_seq_lens.push_back(num_decoding_tokens);
-#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU) || \
-    defined(USE_MUSA)
+#elif defined(USE_MLU) || defined(USE_CUDA) || defined(USE_ILU)
         state_.seq_lens.push_back(state_.seq_lens.back() + num_decoding_tokens);
         state_.q_seq_lens.push_back(state_.q_seq_lens.back() +
                                     num_decoding_tokens);

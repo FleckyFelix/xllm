@@ -240,7 +240,7 @@ else()
 endif()
 
 set(CPPREST_EXCLUDE_WEBSOCKETS ON CACHE BOOL "Exclude websockets functionality." FORCE)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-truncation")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-truncation")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 if(USE_CUDA)
@@ -427,6 +427,7 @@ print(torch_musa.core.cmake_prefix_path)"
   list(POP_BACK CMAKE_PREFIX_PATH)
 
   find_package(MKL REQUIRED)
+  set(MKL_LIB_PATH "/opt/intel/oneapi/mkl/lib/intel64/")
 
   include_directories(
       ${MUSA_INCLUDE_DIRS}

@@ -40,6 +40,9 @@ Stream::Stream(torch_mlu::MLUStream stream, const int32_t timeout)
 #elif defined(USE_CUDA) || defined(USE_ILU)
 Stream::Stream(c10::cuda::CUDAStream stream, const int32_t timeout)
     : stream_(stream), timeout_(timeout) {}
+#elif defined(USE_MUSA)
+Stream::Stream(c10::musa::MUSAStream stream, const int32_t timeout)
+    : stream_(stream), timeout_(timeout) {}
 #endif
 
 int Stream::synchronize() const {

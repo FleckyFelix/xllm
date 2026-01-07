@@ -39,10 +39,6 @@ class LlmModelImplBase : public torch::nn::Module {
       this->layer_forward_interrupted_ = interrupted;
     });
     mrope_section_ = args.rope_scaling_mrope_section();
-    q_heads = args.n_heads();
-    kv_heads = args.n_kv_heads().value_or(args.n_heads());
-    q_head_dim = args.head_dim();
-    kv_head_dim = args.head_dim();
   }
 
   torch::Tensor get_input_embeddings(torch::Tensor input_ids) {

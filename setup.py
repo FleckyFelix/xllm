@@ -421,6 +421,7 @@ class ExtBuild(build_ext):
             cmake_args += ["-DGENERATE_SO=ON"]
         else:
             cmake_args += ["-DGENERATE_SO=OFF"]
+
         # Adding CMake arguments set as environment variable
         # (needed e.g. to build for ARM OSx on conda-forge)
         if "CMAKE_ARGS" in os.environ:
@@ -792,9 +793,9 @@ def parse_arguments():
     parser.add_argument(
         '--device',
         type=str.lower,
-        choices=['auto', 'a2', 'a3', 'mlu', 'musa', 'cuda', 'ilu'],
+        choices=['auto', 'a2', 'a3', 'mlu', 'cuda', 'ilu', 'musa'],
         default='auto',
-        help='Device type: a2, a3, mlu, musa, ilu or cuda (case-insensitive)'
+        help='Device type: a2, a3, mlu, ilu, cuda or musa (case-insensitive)'
     )
     
     parser.add_argument(

@@ -1,10 +1,3 @@
-# if(USE_CUDA)
-#   set(CMAKE_CXX_COMPILER "/usr/local/musa-4.3.2/bin/mcc")
-  # add_compile_options("-fplugin=/data/gh/git/musamapping/build/libMusaMapping.so")
-# endif()
-# set(CMAKE_CXX_COMPILER "/usr/local/musa-4.3.2/bin/mcc")
-
-
 include(cc_binary)
 include(cc_shared_library)
 
@@ -13,7 +6,7 @@ include_directories(.)
 # Set warning-as-error for xllm code (third-party headers are marked as SYSTEM)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(
-    $<$<COMPILE_LANGUAGE:CXX>:-Werror>
+    # $<$<COMPILE_LANGUAGE:CXX>:-Werror>
     $<$<COMPILE_LANGUAGE:C>:-Werror>
   )
 

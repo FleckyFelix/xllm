@@ -13,8 +13,6 @@ elseif(USE_MUSA)
   add_subdirectory(musa)
 endif()
 
-endif()
-
 add_subdirectory(common)
 
 cc_library(
