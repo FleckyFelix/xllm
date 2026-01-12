@@ -1,9 +1,5 @@
-
 cmake_minimum_required(VERSION 3.26)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-set(CMAKE_VERBOSE_MAKEFILE ON)
-message("in CMAKE")
 
 option(USE_NPU "Enable NPU support" OFF)
 option(USE_MLU "Enable MLU support" OFF)
@@ -110,15 +106,6 @@ option(USE_MANYLINUX "Build for manylinux" OFF)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
-
-# if(USE_NPU OR USE_CUDA)
-#   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
-#   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-#   # add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
-# elseif(USE_MLU)
-#   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
-#   add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
-# endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
@@ -240,7 +227,9 @@ else()
 endif()
 
 set(CPPREST_EXCLUDE_WEBSOCKETS ON CACHE BOOL "Exclude websockets functionality." FORCE)
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-truncation")
+if(NOT USE_MUSA)
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-truncation")
+endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 if(USE_CUDA)
@@ -307,7 +296,7 @@ endif()
 # before including libtorch, as doing so afterwards may lead to
 # unexpected linker errors.
 if (DEFINED ENV{LIBTORCH_ROOT})
-  # find_package(Torch REQUIRED HINTS "$ENV{LIBTORCH_ROOT}") # dont use torch/include, add vcpkg/include
+  find_package(Torch REQUIRED HINTS "$ENV{LIBTORCH_ROOT}")
   message(STATUS "Using libtorch at $ENV{LIBTORCH_ROOT}")
 else()
   include(FetchContent)
@@ -329,7 +318,7 @@ else()
   )
   FetchContent_MakeAvailable(libtorch)
   
-  find_package(Torch REQUIRED PATHS ${LIBTORCH_SOURCE_DIR} NO_DEFAULT_PATH) #don't use torch/include, add vcpkg/include
+  find_package(Torch REQUIRED PATHS ${LIBTORCH_SOURCE_DIR} NO_DEFAULT_PATH)
   message(STATUS "Downloading and using libtorch 2.1.0 for CPU at ${LIBTORCH_SOURCE_DIR}")
 endif()
 
@@ -427,7 +416,6 @@ print(torch_musa.core.cmake_prefix_path)"
   list(POP_BACK CMAKE_PREFIX_PATH)
 
   find_package(MKL REQUIRED)
-  set(MKL_LIB_PATH "/opt/intel/oneapi/mkl/lib/intel64/")
 
   include_directories(
       ${MUSA_INCLUDE_DIRS}
