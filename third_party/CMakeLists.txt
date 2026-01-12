@@ -1,4 +1,3 @@
-set(USE_CUDA "ON")
 include(cc_library)
 
 add_subdirectory(sentencepiece)

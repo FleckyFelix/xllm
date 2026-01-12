@@ -760,6 +760,10 @@ def pre_build(device):
             if not apply_patch_safely("../custom_patch/Mooncake_npu.patch", mooncake_repo_path):
                 print("Failed to apply Mooncake_npu.patch!")
                 exit(1)
+        elif device == "musa":
+            if not apply_patch_safely("../custom_patch/Mooncake_musa.patch", mooncake_repo_path):
+                print("Failed to apply Mooncake.patch!")
+                exit(1)
         else:
             if not apply_patch_safely("../custom_patch/Mooncake.patch", mooncake_repo_path):
                 print("Failed to apply Mooncake.patch!")
