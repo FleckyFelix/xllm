@@ -130,9 +130,9 @@ class QWen3ModelImpl : public LlmModelImplBase<layer::Qwen3DecoderLayer> {
         attn_metadata,
         input_params_new.q_seq_lens_vec,
         input_params_new.kv_seq_lens_vec,
-        32 /*q_heads*/,
-        8 /*kv_heads*/,
-        128 /*q_head_dim*/,
+        q_heads,
+        kv_heads,
+        q_head_dim,
         new_cache_slots,
         64);
     attn_metadata.mrope_cos = cos_sin_;
