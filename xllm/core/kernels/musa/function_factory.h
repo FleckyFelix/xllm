@@ -99,10 +99,7 @@ class FunctionFactory {
   }
 
   MATE_FUNC_TYPE mate_func() {
-    std::string uri =
-        "/usr/local/lib/python3.10/dist-packages/"
-        "mate-0.1.0.dev26+g4c593b8-py3.10-linux-x86_64.egg/mate/"
-        "_C.cpython-310-x86_64-linux-gnu.so";
+    std::string uri = util::get_string_env("MATE_OPS_PATH");
     static std::optional<MATE_FUNC_TYPE> f;
     static std::unique_ptr<torch::DynamicLibrary> lib;
     if (f.has_value()) {

@@ -43,20 +43,7 @@ namespace xllm::kernel::musa {
 // https://docs.nvidia.com/musa/musa-c-programming-guide/#programmatic-dependent-launch-and-synchronization
 // Only supported for >= sm90, and currently only for FA2, CUDA core, and
 // trtllm-gen decode.
-bool support_pdl() {
-  return false;  // compatibility!!
-  // static bool supported = []() {
-  //   cudaDeviceProp prop;
-  //   cudaError_t err = cudaGetDeviceProperties(&prop, /*device_id=*/0);
-  //   if (err != cudaSuccess) {
-  //     LOG(ERROR) << "cuda get device properties failed";
-  //     return false;
-  //   }
-  //   return prop.major >= 9;
-  // }();
-
-  // return supported;
-}
+bool support_pdl() { return false; }
 
 std::string path_to_uri_so_lib(const std::string& uri) {
   return util::get_string_env("FLASHINFER_OPS_PATH") + "/" + uri + "/" + uri +
