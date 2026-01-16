@@ -17,6 +17,7 @@ limitations under the License.
 
 #include <ATen/DynamicLibrary.h>
 
+#include "core/util/env_var.h"
 #include "utils.h"
 
 namespace xllm::kernel::musa {
