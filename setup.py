@@ -413,6 +413,7 @@ class ExtBuild(build_ext):
         elif self.device == "musa":
             cmake_args += ["-DUSE_MUSA=ON"]
             set_musa_envs()
+            global BUILD_TEST_FILE
             BUILD_TEST_FILE = False
             # BUILD_EXPORT = False
         else:
