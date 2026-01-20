@@ -281,7 +281,10 @@ def set_musa_envs():
     os.environ["LIBTORCH_ROOT"] = get_torch_root_path()
     os.environ["PYTORCH_INSTALL_PATH"] = get_torch_root_path()
     os.environ["PYTORCH_MUSA_INSTALL_PATH"] = get_torch_musa_root_path()
-    os.environ["MUSA_TOOLKIT_ROOT_DIR"] = "/usr/local/musa"
+    import torch_musa
+    from torch_musa.utils.musa_extension import MUSA_HOME
+    os.environ["MUSA_TOOLKIT_ROOT_DIR"] = MUSA_HOME
+    os.environ["TORCH_MUSA_PYTHONPATH"] = torch_musa.core.cmake_prefix_path
     
 def set_cuda_envs():
     os.environ["PYTHON_INCLUDE_PATH"] = get_python_include_path()
